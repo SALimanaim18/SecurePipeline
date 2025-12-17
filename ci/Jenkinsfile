@@ -8,14 +8,12 @@ pipeline {
 
     stages {
 
-        // ------------------- Checkout GitHub -------------------
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        // ------------------- Build Docker Image -------------------
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker image...'
@@ -23,76 +21,58 @@ pipeline {
             }
         }
 
-        // ------------------- Generate SBOM -------------------
         stage('Generate SBOM') {
             steps {
                 echo 'Generating SBOM with Syft...'
-                bat "..\\scripts\\generate_sbom.bat"
+                bat "scripts\\generate_sbom.bat"
             }
         }
 
-        // ------------------- Scan SBOM (Grype) -------------------
-        stage('Scan SBOM') {
+        stage('Scan SBOM (Grype)') {
             steps {
                 echo 'Scanning SBOM with Grype...'
-                bat "..\\scripts\\grype_scan.bat"
+                bat "scripts\\grype_scan.bat"
             }
         }
 
-        // ------------------- Scan Docker Image (Trivy) -------------------
-        stage('Scan Image') {
+        stage('Scan Docker Image (Trivy)') {
             steps {
                 echo 'Scanning Docker image with Trivy...'
-                bat "..\\scripts\\trivy_scan.bat %REGISTRY%/%IMAGE%:latest"
+                bat "scripts\\trivy_scan.bat %REGISTRY%/%IMAGE%:latest"
             }
         }
 
-        // ------------------- Archive Reports -------------------
         stage('Archive Reports') {
             steps {
-                echo 'Archiving security reports...'
-                archiveArtifacts artifacts: 'sbom.json, grype-report.txt, trivy-report.txt',
-                                 allowEmptyArchive: true
+                archiveArtifacts artifacts: '*.json, *.txt', allowEmptyArchive: true
             }
         }
 
-        // ------------------- Fail if Critical Vulnerabilities -------------------
         stage('Fail on Critical Vulns') {
             steps {
                 script {
-                    def criticalFound = bat(
+                    def critical = bat(
                         script: 'findstr /C:"CRITICAL" grype-report.txt',
                         returnStatus: true
                     )
-
-                    if (criticalFound == 0) {
-                        error("❌ Vulnérabilités CRITIQUES détectées — arrêt du pipeline")
-                    } else {
-                        echo "✅ Aucune vulnérabilité critique détectée"
+                    if (critical == 0) {
+                        error("❌ Vulnérabilités CRITIQUES détectées")
                     }
                 }
             }
         }
 
-        // ------------------- Sign Docker Image (Cosign) -------------------
-        stage('Sign Image') {
+        stage('Sign Image (Cosign)') {
             steps {
-                withCredentials([
-                    file(credentialsId: 'cosign.key', variable: 'COSIGN_KEY')
-                ]) {
-                    echo 'Signing Docker image with Cosign...'
-                    bat "..\\scripts\\sign.bat %REGISTRY%/%IMAGE%:latest"
+                withCredentials([file(credentialsId: 'cosign.key', variable: 'COSIGN_KEY')]) {
+                    bat "scripts\\sign.bat %REGISTRY%/%IMAGE%:latest"
                 }
             }
         }
 
-        // ------------------- Push Docker Image -------------------
         stage('Push Image') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'registry_token', variable: 'REG_TOKEN')
-                ]) {
-                    echo 'Pushing Docker image to registry...'
+                withCredentials([string(credentialsId: 'registry_token', variable: 'REG_TOKEN')]) {
                     bat "docker login -u %REGISTRY% -p %REG_TOKEN%"
                     bat "docker push %REGISTRY%/%IMAGE%:latest"
                 }
@@ -102,10 +82,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Secure CI/CD pipeline completed successfully"
+            echo '✅ Secure DevSecOps pipeline completed successfully'
         }
         failure {
-            echo "❌ Secure CI/CD pipeline failed"
+            echo '❌ Secure DevSecOps pipeline failed'
         }
     }
 }
