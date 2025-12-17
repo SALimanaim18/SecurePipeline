@@ -1,0 +1,3 @@
+@echo off
+echo Scanning SBOM with Grype...
+grype sbom:sbom.json -o table > grype-report.txt

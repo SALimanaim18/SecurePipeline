@@ -1,0 +1,3 @@
+@echo off
+echo Generating SBOM with Syft...
+syft dir:. -o json > sbom.json

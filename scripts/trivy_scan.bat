@@ -1,0 +1,3 @@
+@echo off
+echo Scanning Docker image with Trivy...
+trivy image --format table --output trivy-report.txt %1

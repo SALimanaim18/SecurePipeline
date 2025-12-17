@@ -1,0 +1,3 @@
+@echo off
+echo Signing Docker image with Cosign...
+C:\Cosign\cosign.exe sign --key %1 %2
