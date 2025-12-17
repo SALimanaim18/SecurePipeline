@@ -19,7 +19,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker image...'
-                bat "docker build -t %REGISTRY%/%IMAGE%:latest ."
+                bat "docker build -t %REGISTRY%/%IMAGE%:latest app"
             }
         }
 
