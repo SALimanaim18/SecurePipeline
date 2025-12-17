@@ -62,14 +62,17 @@ pipeline {
             }
         }
 
-        stage('Sign Image (Cosign)') {
+stage('Sign Image (Cosign)') {
     steps {
-        withCredentials([file(credentialsId: 'cosign.key', variable: 'COSIGN_KEY')]) {
-            echo "Signing Docker image with Cosign..."
-            bat "scripts\\sign.bat %COSIGN_KEY% ${env.REGISTRY}/${env.IMAGE}:latest"
+        withCredentials([
+            file(credentialsId: 'cosign.key', variable: 'COSIGN_KEY'),
+            string(credentialsId: 'registry_token', variable: 'REG_TOKEN')
+        ]) {
+            bat "scripts\\sign.bat %COSIGN_KEY% %REGISTRY%/%IMAGE%:latest"
         }
     }
 }
+
 
 
         stage('Push Image') {
