@@ -61,7 +61,14 @@ pipeline {
                 }
             }
         }
-
+        stage('Push Image') {
+            steps {
+                withCredentials([string(credentialsId: 'registry_token', variable: 'REG_TOKEN')]) {
+                    bat "docker login -u %REGISTRY% -p %REG_TOKEN%"
+                    bat "docker push %REGISTRY%/%IMAGE%:latest"
+                }
+            }
+        }
 stage('Sign Image (Cosign)') {
     steps {
         withCredentials([
@@ -75,14 +82,7 @@ stage('Sign Image (Cosign)') {
 
 
 
-        stage('Push Image') {
-            steps {
-                withCredentials([string(credentialsId: 'registry_token', variable: 'REG_TOKEN')]) {
-                    bat "docker login -u %REGISTRY% -p %REG_TOKEN%"
-                    bat "docker push %REGISTRY%/%IMAGE%:latest"
-                }
-            }
-        }
+
     }
 
     post {
