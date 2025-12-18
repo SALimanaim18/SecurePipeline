@@ -83,18 +83,19 @@ pipeline {
         }
 
         // ------------------- Sign Docker Image -------------------
-        stage('Sign Image (Cosign)') {
-            steps {
-                withCredentials([
-                    file(credentialsId: 'cosign.key', variable: 'COSIGN_KEY'),
-                    string(credentialsId: 'registry_token', variable: 'REG_TOKEN')
-                ]) {
-                    echo 'Signing Docker image with Cosign...'
-                    // Authentification Docker dans le script sign.bat
-                    bat "scripts\\sign.bat %COSIGN_KEY% %REGISTRY%/%IMAGE%:latest %REG_TOKEN%"
-                }
-            }
+ stage('Sign Image (Cosign)') {
+    steps {
+        withCredentials([
+            file(credentialsId: 'cosign.key', variable: 'COSIGN_KEY'),
+            string(credentialsId: 'cosign_password', variable: 'COSIGN_PASSWORD'),
+            string(credentialsId: 'registry_token', variable: 'REG_TOKEN')
+        ]) {
+            echo 'Signing Docker image with Cosign...'
+            bat "scripts\\sign.bat %COSIGN_KEY% %REGISTRY%/%IMAGE%:latest %REG_TOKEN%"
         }
+    }
+}
+
     }
 
     post {
