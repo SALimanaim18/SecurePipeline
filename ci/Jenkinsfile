@@ -8,12 +8,14 @@ pipeline {
 
     stages {
 
+        // ------------------- Checkout GitHub -------------------
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
+        // ------------------- Build Docker Image -------------------
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker image...'
@@ -21,6 +23,18 @@ pipeline {
             }
         }
 
+        // ------------------- Push Docker Image -------------------
+        stage('Push Image') {
+            steps {
+                withCredentials([string(credentialsId: 'registry_token', variable: 'REG_TOKEN')]) {
+                    echo 'Pushing Docker image to Docker Hub...'
+                    bat "docker login -u %REGISTRY% -p %REG_TOKEN%"
+                    bat "docker push %REGISTRY%/%IMAGE%:latest"
+                }
+            }
+        }
+
+        // ------------------- Generate SBOM -------------------
         stage('Generate SBOM') {
             steps {
                 echo 'Generating SBOM with Syft...'
@@ -28,26 +42,31 @@ pipeline {
             }
         }
 
-        stage('Scan SBOM (Grype)') {
+        // ------------------- Scan SBOM (Grype) -------------------
+        stage('Scan SBOM') {
             steps {
                 echo 'Scanning SBOM with Grype...'
                 bat "scripts\\grype_scan.bat"
             }
         }
 
-        stage('Scan Docker Image (Trivy)') {
+        // ------------------- Scan Docker Image (Trivy) -------------------
+        stage('Scan Image') {
             steps {
                 echo 'Scanning Docker image with Trivy...'
                 bat "scripts\\trivy_scan.bat %REGISTRY%/%IMAGE%:latest"
             }
         }
 
+        // ------------------- Archive Reports -------------------
         stage('Archive Reports') {
             steps {
+                echo 'Archiving SBOM and scan reports...'
                 archiveArtifacts artifacts: '*.json, *.txt', allowEmptyArchive: true
             }
         }
 
+        // ------------------- Fail on Critical Vulnerabilities -------------------
         stage('Fail on Critical Vulns') {
             steps {
                 script {
@@ -55,34 +74,27 @@ pipeline {
                         script: 'findstr /C:"CRITICAL" grype-report.txt',
                         returnStatus: true
                     )
+                    echo "High vulnerabilities found status: ${critical}"
                     if (critical == 0) {
-                        error("❌ Vulnérabilités CRITIQUES détectées")
+                        error("❌ Vulnérabilités CRITIQUES détectées !")
                     }
                 }
             }
         }
-        stage('Push Image') {
+
+        // ------------------- Sign Docker Image -------------------
+        stage('Sign Image (Cosign)') {
             steps {
-                withCredentials([string(credentialsId: 'registry_token', variable: 'REG_TOKEN')]) {
-                    bat "docker login -u %REGISTRY% -p %REG_TOKEN%"
-                    bat "docker push %REGISTRY%/%IMAGE%:latest"
+                withCredentials([
+                    file(credentialsId: 'cosign.key', variable: 'COSIGN_KEY'),
+                    string(credentialsId: 'registry_token', variable: 'REG_TOKEN')
+                ]) {
+                    echo 'Signing Docker image with Cosign...'
+                    // Authentification Docker dans le script sign.bat
+                    bat "scripts\\sign.bat %COSIGN_KEY% %REGISTRY%/%IMAGE%:latest %REG_TOKEN%"
                 }
             }
         }
-stage('Sign Image (Cosign)') {
-    steps {
-        withCredentials([
-            file(credentialsId: 'cosign.key', variable: 'COSIGN_KEY'),
-            string(credentialsId: 'registry_token', variable: 'REG_TOKEN')
-        ]) {
-            bat "scripts\\sign.bat %COSIGN_KEY% %REGISTRY%/%IMAGE%:latest"
-        }
-    }
-}
-
-
-
-
     }
 
     post {
