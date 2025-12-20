@@ -1,3 +1,4 @@
+@Library('jenkins-shared') _
 pipeline {
     agent any
 
@@ -104,6 +105,10 @@ pipeline {
         }
         failure {
             echo '❌ Secure DevSecOps pipeline failed'
+        }
+         always {
+            // Appel à ta Shared Library pour notifier Spring Boot
+            notifySpringBoot()
         }
     }
 }
