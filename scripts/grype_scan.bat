@@ -1,3 +1,3 @@
 @echo off
 echo Scanning SBOM with Grype...
-grype sbom:sbom.json -o table > grype-report.txt
+grype sbom:sbom.json --fail-on critical > grype-report.txt
