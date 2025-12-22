@@ -30,7 +30,8 @@ pipeline {
                 withCredentials([string(credentialsId: 'registry_token', variable: 'REG_TOKEN')]) {
                     echo 'Pushing Docker image to Docker Hub...'
                     bat "docker login -u %REGISTRY% -p %REG_TOKEN%"
-                    bat "docker push %REGISTRY%/%IMAGE%:latest"
+                      bat "docker push docker.io/forbiddenuser/securepipeline:latest"
+                    //bat "docker push %REGISTRY%/%IMAGE%:latest"
                 }
             }
         }
